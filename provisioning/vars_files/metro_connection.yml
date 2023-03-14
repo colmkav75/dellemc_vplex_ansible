@@ -1,0 +1,4 @@
+---
+vplexhost: 10.1.1.201 
+verifycert: false
+debug_mode: false

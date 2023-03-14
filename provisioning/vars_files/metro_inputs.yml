@@ -1,0 +1,24 @@
+---
+cluster_name_1: cluster-1
+cluster_name_2: cluster-2
+array_name_1: DellEMC-PowerStore-6Q30QM3
+array_name_2: DellEMC-PowerStore-6PWZPM3 
+raid_type: 'raid-0'
+stripe_width: '4KB'
+port_wwn: ['list of initiator port-wwn']
+initiator_name: 'name of initiator to be registered'
+port_name: ['list of VPLEX front-end ports']
+c1_storage_view_name: 
+c2_storage_view_name: 
+vol_size: 350GB
+cluster_1_svol: 'echo-350_svol_c1'
+cluster_2_svol: 'echo-350_svol_c2'
+cluster_1_ext: 'echo-350_ext_c1'
+cluster_2_ext: 'echo-350_ext_c2'
+cluster_1_dev: 'echo-350_dev_c1'
+cluster_2_dev: 'echo-350_dev_c2'
+cluster_ddev: 'echo-350_ddev'
+cluster_vvol: 'echo-350_dist_vvol'
+cluster_1_vvol: 'echo-350_c1'
+cluster_2_vvol: 'echo-350_c2'
+dist_cg: CG1
