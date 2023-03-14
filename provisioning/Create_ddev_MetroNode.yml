@@ -1,0 +1,195 @@
+# Metro node Provisioning
+
+---
+- name: Perform Metro node distributed device provisioning
+  hosts: localhost
+  connection: local
+
+  vars_files:
+    - vars_files/metro_connection.yml
+    - vars_files/metro_credentials.yml
+    - vars_files/metro_inputs.yml
+
+  vars:
+    input: &connection_vars
+      vplexhost: "{{ vplexhost }}"
+      vplexuser: "{{ vplexuser }}"
+      vplexpassword: "{{ vplexpassword }}"
+      verifycert: "{{ verifycert }}"
+
+    ps1_vol: "{{ lookup('file','/tmp/ps1_vol') }}"
+    ps2_vol: "{{ lookup('file','/tmp/ps2_vol') }}"
+
+
+  collections:
+    - dellemc.vplex
+
+  tasks:
+    - name: Rediscover StorageArray cluster-1
+      dellemc_vplex_array:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_1 }}"
+        array_name: "{{ array_name_1 }}"
+        rediscover: true
+      register: array_details_1
+
+    - name: Rediscover StorageArray cluster-2
+      dellemc_vplex_array:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_2 }}"
+        array_name: "{{ array_name_2}}"
+        rediscover: true
+      register: array_details_2
+
+#    # This task returns the list of storage volumes that are unclaimed
+#    - name: List of all storage volumes that are unclaimed in cluster 1 and search for ours
+#      dellemc_vplex_gatherfacts:
+#        <<: *connection_vars
+#        cluster_name: "{{ cluster_name_1 }}"
+#        gather_subset:
+#          - stor_vol
+#        filters:
+#         - filter_key: "use"
+#           filter_operator: "equal"
+#           filter_value: "unclaimed"
+#         - filter_key: "capacity"
+#           filter_operator: "equal"
+#           filter_value: "{{ vol_size }}"
+#     register: volume_1
+#
+#    - name: List of all storage volumes that are unclaimed in cluster 2 and search for ours
+#      dellemc_vplex_gatherfacts:
+#        <<: *connection_vars
+#        cluster_name: "{{ cluster_name_2 }}"
+#        gather_subset:
+#          - stor_vol
+#        filters:
+#          - filter_key: "use"
+#            filter_operator: "equal"
+#            filter_value: "unclaimed"
+#          - filter_key: "capacity"
+#            filter_operator: "equal"
+#            filter_value: "{{ vol_size }}"
+#      register: volume_2
+
+    - name: Claim Storage Volume cluster 1
+      dellemc_vplex_storage_volume:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_1 }}"
+        storage_volume_id: "{{ ps1_vol }}"
+        new_storage_volume_name: "{{ cluster_1_svol }}"
+        claimed_state: "claimed"
+        state: "present"
+      register: volume_claimed_1
+
+    - name: Claim Storage Volumes cluster 2
+      dellemc_vplex_storage_volume:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_2 }}"
+        storage_volume_id: "{{ ps2_vol }}"
+        new_storage_volume_name: "{{ cluster_2_svol }}"
+        claimed_state: "claimed"
+        state: "present"
+      register: volume_claimed_2
+
+    - name: Create extents cluster 1
+      dellemc_vplex_extent:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_1 }}"
+        storage_volume_name: "{{ cluster_1_svol }}" 
+        extent_name: "{{ cluster_1_ext }}"
+        state: "present"
+      register: extent_det_1
+
+
+    - name: Create extents cluster 2
+      dellemc_vplex_extent:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_2 }}"
+        storage_volume_name: "{{ cluster_2_svol }}"
+        extent_name: "{{ cluster_2_ext }}"
+        state: "present"
+
+
+    - name: Create device cluster 1
+      dellemc_vplex_device:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_1 }}"
+        device_name: "{{ cluster_1_dev }}"
+        extents: "{{ cluster_1_ext }}"
+        extent_state: "present-in-device"
+        geometry: "{{ raid_type }}"
+        stripe_depth: "{{ stripe_width }}"
+        state: "present"
+      register: device_det_1
+
+    - name: Create device cluster 2
+      dellemc_vplex_device:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_2 }}"
+        device_name: "{{ cluster_2_dev }}"
+        extents: "{{ cluster_2_ext }}"
+        extent_state: "present-in-device"
+        geometry: "{{ raid_type }}"
+        stripe_depth: "{{ stripe_width }}"
+        state: "present"
+      register: device_det_2
+
+
+    - name: Create distributed device 
+      dellemc_vplex_distributed_device:
+        <<: *connection_vars
+        target_cluster: "{{ cluster_name_2 }}"
+        target_device:  "{{ cluster_2_dev }}"
+        source_cluster: "{{ cluster_name_1 }}"
+        source_device: "{{ cluster_1_dev }}"
+        rule_set: 'cluster-1-detaches'
+        sync: false
+        distributed_device_name: "{{ cluster_ddev }}"
+        state: 'present'
+      register: create_dd
+
+    - name: Get ddev details and wait for initial sync
+      dellemc_vplex_distributed_device:
+        <<: *connection_vars
+        distributed_device_name: "{{ cluster_ddev }}"
+        state: 'present'
+      register: get_dd
+      until: get_dd.dist_device_details.rebuild_status != "rebuilding"
+      retries: 100
+      delay: 5
+
+    - name: Create distributed virtual volume
+      dellemc_vplex_distributed_virtual_volume:
+        <<: *connection_vars
+        distributed_virtual_volume_name: "{{ cluster_vvol }}"
+        distributed_device_name: "{{ cluster_ddev }}"
+        thin_enable: true
+        state: "present"
+      register: create_dvv
+
+    - name: Add virtual volume to the storage view cluster 1
+      dellemc_vplex_storage_view:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_1 }}"
+        storage_view_name: "{{ c1_storage_view_name }}"
+        virtual_volumes: ["{{ cluster_vvol }}"]
+        virtual_volume_state: "present-in-view"
+        state: "present"
+
+    - name: Add virtual volume to the storage view cluster 2
+      dellemc_vplex_storage_view:
+        <<: *connection_vars
+        cluster_name: "{{ cluster_name_2 }}"
+        storage_view_name: "{{ c2_storage_view_name }}"
+        virtual_volumes: ["{{ cluster_vvol }}"]
+        virtual_volume_state: "present-in-view"
+        state: "present"
+
+    - name: Add distributed volume to distributed cg
+      dellemc_vplex_distributed_consistency_group:
+        <<: *connection_vars
+        distributed_cg_name: "{{ dist_cg }}"
+        distributed_virtual_volumes: "{{ cluster_vvol }}"
+        distributed_virtual_volume_state: "present-in-cg"
+        state: "present"

@@ -1,0 +1,21 @@
+#!/usr/bin/env ansible-playbook
+---
+ - hosts: localhost
+   gather_facts: no
+   tasks:
+
+     - name: Delete PowerStore 1 LUN info
+       ansible.builtin.file:
+          path: /tmp/ps1_vol
+          state: absent      
+
+     - name: Delete PowerStore 2 LUN info
+       ansible.builtin.file:
+          path: /tmp/ps2_vol
+          state: absent
+
+     - name: Delete naa wwn file
+       ansible.builtin.file:
+          path: /tmp/vol_naa
+          state: absent
+ 

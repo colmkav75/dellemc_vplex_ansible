@@ -1,0 +1,51 @@
+#!/usr/bin/env ansible-playbook
+---
+- name: Provision Volume of {{ vol_size }} {{ cap_unit }} and map to {{ siteb_metro }}
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vars_files/ps2_connection.yml
+    - vars_files/ps2_credentials.yml
+    - vars_files/host.yml
+
+  collections:
+    - dellemc.powerstore
+
+  vars:
+    input: &connection_vars
+      password: "{{ password }}"
+      array_ip: "{{ array_ip_2 }}"
+      user: "{{ user }}"
+      verifycert: false
+    vol_name: "{{ lun_name }}"
+    cap_unit: 'GB'
+
+  tasks:
+
+    - name: Create volume and map it to a host
+      dellemc.powerstore.volume:
+        <<: *connection_vars
+        vol_name: "{{ vol_name }}"
+        size: "{{ vol_size }}"
+        cap_unit: "{{ cap_unit }}"
+        mapping_state: 'mapped'
+        host: "{{ siteb_metro }}"
+        state: 'present'
+      register: storage_info
+
+    - debug:
+        msg: "{{ storage_info.volume_details.wwn }}"
+
+    - name: Make a list of effective wwns
+      set_fact:
+        vol_wwn: "VPD83T3:{{storage_info.volume_details.wwn.split('.') | last}}"
+
+    - debug:
+        msg: "{{vol_wwn}}"
+
+
+    - name: Output LUN wwn in VPLEX format
+      shell: echo -e "{{vol_wwn}}" >> /tmp/ps2_vol
+
