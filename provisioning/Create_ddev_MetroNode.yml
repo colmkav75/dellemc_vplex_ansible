@@ -1,7 +1,7 @@
-# Metro node Provisioning
+# VPLEX / Metro node Distributed Virtual Volume Provisioning
 
 ---
-- name: Perform Metro node distributed device provisioning
+- name: Perform VPLEX / Metro node distributed device provisioning
   hosts: localhost
   connection: local
 
@@ -41,36 +41,6 @@
         rediscover: true
       register: array_details_2
 
-#    # This task returns the list of storage volumes that are unclaimed
-#    - name: List of all storage volumes that are unclaimed in cluster 1 and search for ours
-#      dellemc_vplex_gatherfacts:
-#        <<: *connection_vars
-#        cluster_name: "{{ cluster_name_1 }}"
-#        gather_subset:
-#          - stor_vol
-#        filters:
-#         - filter_key: "use"
-#           filter_operator: "equal"
-#           filter_value: "unclaimed"
-#         - filter_key: "capacity"
-#           filter_operator: "equal"
-#           filter_value: "{{ vol_size }}"
-#     register: volume_1
-#
-#    - name: List of all storage volumes that are unclaimed in cluster 2 and search for ours
-#      dellemc_vplex_gatherfacts:
-#        <<: *connection_vars
-#        cluster_name: "{{ cluster_name_2 }}"
-#        gather_subset:
-#          - stor_vol
-#        filters:
-#          - filter_key: "use"
-#            filter_operator: "equal"
-#            filter_value: "unclaimed"
-#          - filter_key: "capacity"
-#            filter_operator: "equal"
-#            filter_value: "{{ vol_size }}"
-#      register: volume_2
 
     - name: Claim Storage Volume cluster 1
       dellemc_vplex_storage_volume:
