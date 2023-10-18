@@ -1,8 +1,8 @@
 ---
 cluster_name_1: cluster-1
 cluster_name_2: cluster-2
-array_name_1: DellEMC-PowerStore-6Q30QM3
-array_name_2: DellEMC-PowerStore-6PWZPM3 
+array_name_1: DellEMC-PowerStore-6QQQQQQ
+array_name_2: DellEMC-PowerStore-6PPPPPP 
 raid_type: 'raid-0'
 stripe_width: '4KB'
 port_wwn: ['list of initiator port-wwn']
